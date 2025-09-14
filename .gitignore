@@ -1,0 +1,7 @@
+MicLoopBack/.venv/
+MicLoopBack/bin/
+MicLoopBack/include/
+MicLoopBack/lib/
+MicLoopBack/pyvenv.cfg
+MicLoopBack/.vscode
+MicLoopBack/node_modules
