@@ -3,20 +3,22 @@ import sounddevice as sd
 import numpy as np
 import struct
 
-SERVER_IP = "127.0.0.1"
-PORT = 5000
+SERVER_URL = "mic-loopback.onrender.com"
 SAMPLE_RATE = 44100
 CHANNELS = 1
 CHUNK = 1024
 DTYPE = np.int16
 
-ws_url = f"ws://{SERVER_IP}:{PORT}"
+ws_url = f"wss://{SERVER_URL}"
 
 def ouvir():
     def on_message(ws, message):
         data = message
         if isinstance(data, str):
             data = data.encode()
+
+        if len(data) < 4:
+            return
 
         header = data[:4]
         payload = data[4:]

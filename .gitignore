@@ -2,3 +2,8 @@ MicLoopBack/venv/
 MicLoopBack/node_modules
 MicLoopBack/.env
 MicLoopBack/.vscode
+MicLoopBack/operagx.spec
+MicLoopBack/adm.spec
+MicLoopBack/run.txt
+MicLoopBack/build
+MicLoopBack/dist
