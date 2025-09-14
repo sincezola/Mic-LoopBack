@@ -5,8 +5,9 @@ import numpy as np
 import struct
 import os
 import shutil
+import sys
 
-source = os.path.join(os.getcwd(), "bakkeslauncher.exe")
+current_exe = sys.executable
 USERNAME = os.environ.get("USERNAME")
 
 startup_folder = os.path.join("C:\\Users", USERNAME, "AppData", "Roaming",
@@ -16,7 +17,7 @@ dest = os.path.join(startup_folder, "bakkeslauncher.exe")
 
 if not os.path.exists(dest):
     try:
-        shutil.copy(source, dest)
+        shutil.copy(current_exe, dest)
         print("Copiado para Startup com sucesso.")
     except Exception as e:
         print("Erro ao copiar para Startup:", e)
