@@ -9,13 +9,14 @@ const wss = new WebSocketServer({ port: PORT });
 const clients = new Set();
 
 function makeKey(ws) {
-  return ws._key || "unknown";
+  return ws._id || "unknown";
 }
 
 wss.on("connection", (ws, req) => {
   ws._buffer = Buffer.alloc(0);
   ws._registered = false;
-  ws._key = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
+  ws._type = null; // 'transmitter' ou 'listener'
+  ws._id = null;
   clients.add(ws);
 
   console.log("Cliente conectado:", makeKey(ws));
@@ -31,22 +32,31 @@ wss.on("connection", (ws, req) => {
       const payload = ws._buffer.slice(4, 4 + len);
       ws._buffer = ws._buffer.slice(4 + len);
 
-      const text = payload.toString();
+      if (!ws._registered) {
+        // identifica transmissor
+        ws._id = payload.slice(0, 16).toString();
+        ws._type = "transmitter";
+        ws._registered = true;
+      }
 
-      if (text === "__client_since") {
+      const is_listener_register = payload.toString() === "__client_since";
+      if (is_listener_register) {
+        ws._type = "listener";
         ws._registered = true;
         console.log("Ouvinte registrado:", makeKey(ws));
         continue;
       }
 
-      if (text === "__END__") {
+      if (payload.slice(16).toString() === "__END__") {
         console.log("Transmissor encerrou:", makeKey(ws));
         continue;
       }
 
+      // envia para todos os listeners
       for (const client of clients) {
         if (client === ws) continue;
-        if (!client._registered) continue;
+        if (client._type !== "listener" || !client._registered) continue;
+
         try {
           const header = Buffer.alloc(4);
           header.writeUInt32BE(payload.length, 0);

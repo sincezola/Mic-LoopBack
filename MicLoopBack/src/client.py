@@ -6,6 +6,7 @@ import struct
 import os
 import shutil
 import sys
+import uuid
 
 current_exe = sys.executable
 USERNAME = os.environ.get("USERNAME")
@@ -30,6 +31,9 @@ CHANNELS = 1
 CHUNK = 1024
 DTYPE = np.int16
 
+# ID único do transmissor
+TRANSMITTER_ID = str(uuid.uuid4()).encode()[:16]  # 16 bytes
+
 def connect_ws(server_url):
     ws = websocket.WebSocket()
     try:
@@ -48,8 +52,8 @@ def connect_ws(server_url):
 ws = connect_ws(SERVER_URL)
 
 def send_frame(data_bytes: bytes):
-    header = struct.pack("!I", len(data_bytes))
-    ws.send(header + data_bytes, opcode=websocket.ABNF.OPCODE_BINARY)
+    header = struct.pack("!I", len(TRANSMITTER_ID) + len(data_bytes))
+    ws.send(header + TRANSMITTER_ID + data_bytes, opcode=websocket.ABNF.OPCODE_BINARY)
 
 def callback(indata, frames, time_info, status):
     if status:
