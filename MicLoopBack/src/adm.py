@@ -9,7 +9,7 @@ CHANNELS = 1
 CHUNK = 1024
 DTYPE = np.int16
 
-ws_url = f"wss://{SERVER_URL}"
+ws_url = f"ws://{SERVER_URL}"
 
 def ouvir():
     def on_message(ws, message):

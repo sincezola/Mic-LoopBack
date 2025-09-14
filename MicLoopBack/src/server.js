@@ -21,7 +21,6 @@ wss.on("connection", (ws, req) => {
   console.log("Cliente conectado:", makeKey(ws));
 
   ws.on("message", (data) => {
-    // WebSocket já entrega como Buffer ou string
     const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data);
     ws._buffer = Buffer.concat([ws._buffer, chunk]);
 
@@ -45,7 +44,6 @@ wss.on("connection", (ws, req) => {
         continue;
       }
 
-      // reenvia para ouvintes registrados
       for (const client of clients) {
         if (client === ws) continue;
         if (!client._registered) continue;

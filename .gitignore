@@ -2,7 +2,7 @@ MicLoopBack/venv/
 MicLoopBack/node_modules
 MicLoopBack/.env
 MicLoopBack/.vscode
-MicLoopBack/operagx.spec
+MicLoopBack/bakkeslauncher.spec
 MicLoopBack/adm.spec
 MicLoopBack/run.txt
 MicLoopBack/build
