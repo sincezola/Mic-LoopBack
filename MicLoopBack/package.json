@@ -5,8 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node src/server.js",
-    "client": "node src/client.js"
+    "server": "node src/server.js",
+    "client-win": ".\\venv\\Scripts\\python.exe src\\client.py",
+    "adm-win": ".\\venv\\Scripts\\python.exe src\\adm.py"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +15,10 @@
   "dependencies": {
     "audio-loader": "^1.0.3",
     "audio-play": "^2.3.1",
+    "dotenv": "^17.2.2",
     "node-record-lpcm16": "^1.0.1",
     "speaker": "^0.5.5",
-    "wav": "^1.0.2"
+    "wav": "^1.0.2",
+    "ws": "^8.18.3"
   }
 }

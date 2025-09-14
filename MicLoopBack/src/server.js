@@ -1,85 +1,74 @@
-// server.js
-import net from "net";
+import { WebSocketServer } from "ws";
+import { config } from "dotenv";
 
-const PORT = 5000;
-const HOST = "127.0.0.1";
+config();
 
-const server = net.createServer();
-const clients = new Set(); // sockets
+const PORT = process.env.PORT || 5000;
 
-function makeKey(socket) {
-  return `${socket.remoteAddress}:${socket.remotePort}`;
+const wss = new WebSocketServer({ port: PORT });
+const clients = new Set();
+
+function makeKey(ws) {
+  return ws._key || "unknown";
 }
 
-server.on("connection", (socket) => {
-  socket.setNoDelay(true);
-  socket._buffer = Buffer.alloc(0);
-  socket._registered = false;
-  clients.add(socket);
+wss.on("connection", (ws, req) => {
+  ws._buffer = Buffer.alloc(0);
+  ws._registered = false;
+  ws._key = `${req.socket.remoteAddress}:${req.socket.remotePort}`;
+  clients.add(ws);
 
-  const key = makeKey(socket);
-  console.log("Cliente conectado:", key);
+  console.log("Cliente conectado:", makeKey(ws));
 
-  socket.on("data", (chunk) => {
-    // acumula bytes
-    socket._buffer = Buffer.concat([socket._buffer, chunk]);
+  ws.on("message", (data) => {
+    // WebSocket já entrega como Buffer ou string
+    const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data);
+    ws._buffer = Buffer.concat([ws._buffer, chunk]);
 
-    // processa mensagens completas (4 bytes length + payload)
-    while (socket._buffer.length >= 4) {
-      const len = socket._buffer.readUInt32BE(0);
-      if (socket._buffer.length < 4 + len) break; // espera mais dados
+    while (ws._buffer.length >= 4) {
+      const len = ws._buffer.readUInt32BE(0);
+      if (ws._buffer.length < 4 + len) break;
 
-      const payload = socket._buffer.slice(4, 4 + len);
-      socket._buffer = socket._buffer.slice(4 + len);
+      const payload = ws._buffer.slice(4, 4 + len);
+      ws._buffer = ws._buffer.slice(4 + len);
 
-      // payload é um Buffer (pode ser texto ou áudio binário)
       const text = payload.toString();
+
       if (text === "__client_since") {
-        socket._registered = true;
-        console.log("Ouvinte registrado:", makeKey(socket));
+        ws._registered = true;
+        console.log("Ouvinte registrado:", makeKey(ws));
         continue;
       }
 
       if (text === "__END__") {
-        console.log("Transmissor encerrou (sinal __END__) de", makeKey(socket));
+        console.log("Transmissor encerrou:", makeKey(ws));
         continue;
       }
 
-      // é um bloco de áudio (ou outro binário) -> repassa para todos os ouvintes
-      // reenvia com o mesmo framing
-      for (const s of clients) {
-        if (s === socket) continue; // não mandar de volta para o emissor
-        if (!s._registered) continue; // só para ouvintes registrados
+      // reenvia para ouvintes registrados
+      for (const client of clients) {
+        if (client === ws) continue;
+        if (!client._registered) continue;
         try {
           const header = Buffer.alloc(4);
           header.writeUInt32BE(payload.length, 0);
-          s.write(Buffer.concat([header, payload]));
+          client.send(Buffer.concat([header, payload]));
         } catch (err) {
-          console.error("Erro ao enviar para", makeKey(s), err);
+          console.error("Erro ao enviar para", makeKey(client), err);
         }
       }
     }
   });
 
-  socket.on("close", () => {
-    clients.delete(socket);
-    console.log("Cliente desconectado:", key);
+  ws.on("close", () => {
+    clients.delete(ws);
+    console.log("Cliente desconectado:", makeKey(ws));
   });
 
-  socket.on("error", (err) => {
-    clients.delete(socket);
-    console.error("Erro socket", key, err);
-    try { socket.destroy(); } catch { }
+  ws.on("error", (err) => {
+    clients.delete(ws);
+    console.error("Erro WS", makeKey(ws), err);
   });
 });
 
-server.on("listening", () => {
-  console.log(`Relay TCP ouvindo em ${HOST}:${PORT}`);
-});
-
-server.on("error", (err) => {
-  console.error("Erro no servidor:", err);
-  server.close();
-});
-
-server.listen(PORT, HOST);
+console.log(`Relay WebSocket ouvindo na porta ${PORT}`);
