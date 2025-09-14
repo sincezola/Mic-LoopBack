@@ -11,20 +11,18 @@ CHUNK = 1024
 DTYPE = np.int16
 
 ws_url = f"ws://{SERVER_URL}"
-buffers = defaultdict(list)  # armazena áudio por transmitter_id
+buffers = defaultdict(list)
 
 def ouvir():
     def on_message(ws, message):
-        data = message
-        if isinstance(data, str):
-            data = data.encode()
+        if isinstance(message, str):
+            message = message.encode()
 
-        if len(data) < 20:  # 4 bytes header + 16 bytes transmitter_id
+        if len(message) < 20:
             return
 
-        header = data[:4]
-        payload = data[4:]
-        length = struct.unpack("!I", header)[0]
+        length = struct.unpack("!I", message[:4])[0]
+        payload = message[4:]
 
         transmitter_id = payload[:16]
         audio_payload = payload[16:]
@@ -36,28 +34,45 @@ def ouvir():
         audio_data = np.frombuffer(audio_payload, dtype=DTYPE)
         buffers[transmitter_id].append(audio_data)
 
-        # mistura todos os transmissores
-        mixed = np.zeros_like(audio_data, dtype=np.int32)
+        # mistura todos os transmissores, garantindo tamanho CHUNK
+        mixed = np.zeros(CHUNK, dtype=np.int32)
         remove_ids = []
         for tid, buf in buffers.items():
             if buf:
-                mixed += buf.pop(0).astype(np.int32)
+                # ajusta tamanho se necessário
+                data = buf.pop(0)
+                if len(data) < CHUNK:
+                    data = np.pad(data, (0, CHUNK - len(data)))
+                elif len(data) > CHUNK:
+                    data = data[:CHUNK]
+                mixed += data.astype(np.int32)
             else:
                 remove_ids.append(tid)
-        # remove transmissores sem buffer
         for tid in remove_ids:
             del buffers[tid]
 
         mixed = np.clip(mixed, np.iinfo(DTYPE).min, np.iinfo(DTYPE).max)
         stream.write(mixed.astype(DTYPE))
 
+    def on_error(ws, error):
+        print("WS Error:", error)
+
+    def on_close(ws, close_status_code, close_msg):
+        print(f"WS closed: {close_status_code} {close_msg}")
+
+    def on_open(ws):
+        print("WS conectado! Registrando como ouvinte...")
+        ws.send(struct.pack("!I", len(b"__client_since")) + b"__client_since")
+
     with sd.OutputStream(samplerate=SAMPLE_RATE,
                          channels=CHANNELS,
                          dtype=DTYPE,
                          blocksize=CHUNK) as stream:
-        ws = websocket.WebSocketApp(ws_url, on_message=on_message)
-        print("Registrando como ouvinte...")
-        ws.on_open = lambda ws: ws.send(struct.pack("!I", len(b"__client_since")) + b"__client_since")
+        ws = websocket.WebSocketApp(ws_url,
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close,
+                                    on_open=on_open)
         ws.run_forever()
 
 if __name__ == "__main__":

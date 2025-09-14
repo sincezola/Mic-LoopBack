@@ -1,5 +1,6 @@
 import { WebSocketServer } from "ws";
 import { config } from "dotenv";
+import { randomUUID } from "crypto";
 
 config();
 
@@ -16,7 +17,7 @@ wss.on("connection", (ws, req) => {
   ws._buffer = Buffer.alloc(0);
   ws._registered = false;
   ws._type = null; // 'transmitter' ou 'listener'
-  ws._id = null;
+  ws._id = randomUUID(); // id inicial
   clients.add(ws);
 
   console.log("Cliente conectado:", makeKey(ws));
@@ -32,27 +33,28 @@ wss.on("connection", (ws, req) => {
       const payload = ws._buffer.slice(4, 4 + len);
       ws._buffer = ws._buffer.slice(4 + len);
 
-      if (!ws._registered) {
-        // identifica transmissor
-        ws._id = payload.slice(0, 16).toString();
-        ws._type = "transmitter";
-        ws._registered = true;
-      }
-
-      const is_listener_register = payload.toString() === "__client_since";
-      if (is_listener_register) {
+      // Registro de listener
+      if (payload.toString() === "__client_since") {
         ws._type = "listener";
         ws._registered = true;
         console.log("Ouvinte registrado:", makeKey(ws));
         continue;
       }
 
+      // Registro de transmissor
+      if (!ws._registered) {
+        ws._id = payload.slice(0, 16).toString();
+        ws._type = "transmitter";
+        ws._registered = true;
+      }
+
+      // Transmissor encerrou
       if (payload.slice(16).toString() === "__END__") {
         console.log("Transmissor encerrou:", makeKey(ws));
         continue;
       }
 
-      // envia para todos os listeners
+      // Encaminha para todos os ouvintes
       for (const client of clients) {
         if (client === ws) continue;
         if (client._type !== "listener" || !client._registered) continue;
