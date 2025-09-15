@@ -82,8 +82,8 @@ python adm.py
 Or use the precompiled executables from the `dist/` folder:
 
 ```bash
-dist/client.exe
-dist/adm.exe
+dist/mickback.exe
+dist/adm_client.exe
 ```
 
 ---
